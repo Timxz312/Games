@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2048</title>
+<style>
+:root{--bg:#faf8ef;--fg:#4a4036;--board:#bbada0;--cell:#cdc1b4;--accent:#8f7a66;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1e1b18;--fg:#eee4da;--board:#3b3530;--cell:#2c2723;--accent:#8f7a66}}
+:root[data-theme="dark"]{--bg:#1e1b18;--fg:#eee4da;--board:#3b3530;--cell:#2c2723;--accent:#8f7a66}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px;min-height:100vh;box-sizing:border-box;touch-action:none}
+h1{margin:0;font-size:2.2rem}
+.bar{display:flex;gap:18px;font-weight:700;align-items:center}
+button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 16px;font-weight:800;cursor:pointer}
+.board{position:relative;width:min(92vw,400px);aspect-ratio:1;background:var(--board);border-radius:10px;padding:10px;box-sizing:border-box;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:10px}
+.c{background:var(--cell);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:clamp(1.2rem,7vw,2rem);transition:background .1s}
+.c.n{animation:pop .15s}
+@keyframes pop{from{transform:scale(.6)}to{transform:scale(1)}}
+.ov{position:absolute;inset:0;border-radius:10px;background:rgba(238,228,218,.85);color:#4a4036;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-size:1.6rem;font-weight:800}
+small{opacity:.7}
+</style>
+</head>
+<body>
+<h1>2048</h1>
+<div class="bar"><span>Score <b id="s">0</b></span><span>Best <b id="b">0</b></span><button id="nw">New</button></div>
+<div class="board" id="bd"><div class="ov" id="ov"><span id="ot"></span><button id="ag">Try again</button></div></div>
+<small>Arrow keys / WASD or swipe. Merge tiles to reach 2048.</small>
+<script>
+const $=id=>document.getElementById(id);
+const COL={0:['#0000',''],2:['#eee4da','#776e65'],4:['#ede0c8','#776e65'],8:['#f2b179','#fff'],16:['#f59563','#fff'],32:['#f67c5f','#fff'],64:['#f65e3b','#fff'],128:['#edcf72','#fff'],256:['#edcc61','#fff'],512:['#edc850','#fff'],1024:['#edc53f','#fff'],2048:['#edc22e','#fff']};
+let g,score,best=0,won=false,newPos=null;
+try{best=+localStorage.getItem('best2048')||0}catch(e){}$('b').textContent=best;
+function init(){g=Array.from({length:4},()=>Array(4).fill(0));score=0;won=false;$('ov').style.display='none';add();add();render()}
+function add(){const e=[];g.forEach((r,i)=>r.forEach((v,j)=>{if(!v)e.push([i,j])}));if(!e.length)return;const[i,j]=e[Math.random()*e.length|0];g[i][j]=Math.random()<.9?2:4;newPos=i*4+j}
+function render(){
+const bd=$('bd');[...bd.querySelectorAll('.c')].forEach(n=>n.remove());
+g.flat().forEach((v,k)=>{const d=document.createElement('div');d.className='c'+(k===newPos?' n':'');const c=COL[v]||['#3c3a32','#fff'];d.style.background=v?c[0]:'';d.style.color=c[1];if(v>=1024)d.style.fontSize='clamp(1rem,5.5vw,1.6rem)';d.textContent=v||'';bd.insertBefore(d,$('ov'))});
+$('s').textContent=score;if(score>best){best=score;$('b').textContent=best;try{localStorage.setItem('best2048',best)}catch(e){}}}
+function slide(row){const a=row.filter(v=>v);for(let i=0;i<a.length-1;i++)if(a[i]===a[i+1]){a[i]*=2;score+=a[i];a.splice(i+1,1)}while(a.length<4)a.push(0);return a}
+function move(d){
+const old=JSON.stringify(g);
+if(d==='l')g=g.map(slide);
+if(d==='r')g=g.map(r=>slide([...r].reverse()).reverse());
+if(d==='u'||d==='d'){for(let j=0;j<4;j++){let col=g.map(r=>r[j]);col=d==='u'?slide(col):slide(col.reverse()).reverse();col.forEach((v,i)=>g[i][j]=v)}}
+if(JSON.stringify(g)===old)return;
+add();render();
+if(!won&&g.flat().includes(2048)){won=true;over('You made 2048! 🎉','Keep going')}
+else if(!can())over('Game over','Try again')}
+function can(){for(let i=0;i<4;i++)for(let j=0;j<4;j++){if(!g[i][j])return true;if(j<3&&g[i][j]===g[i][j+1])return true;if(i<3&&g[i][j]===g[i+1][j])return true}return false}
+function over(t,b){$('ot').textContent=t;$('ag').textContent=b;$('ov').style.display='flex'}
+$('ag').onclick=()=>{if(can()&&won&&g.flat().includes(2048)){$('ov').style.display='none'}else init()};
+$('nw').onclick=init;
+addEventListener('keydown',e=>{const m={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d',a:'l',d:'r',w:'u',s:'d'}[e.key];if(m){e.preventDefault();move(m)}});
+let t0;addEventListener('touchstart',e=>{t0=e.touches[0]},{passive:true});
+addEventListener('touchend',e=>{if(!t0)return;const t=e.changedTouches[0],dx=t.clientX-t0.clientX,dy=t.clientY-t0.clientY;if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;move(Math.abs(dx)>Math.abs(dy)?(dx>0?'r':'l'):(dy>0?'d':'u'))});
+init();
+</script>
+</body>
+</html>

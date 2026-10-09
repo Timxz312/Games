@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Breakout</title>
+<style>
+:root{--bg:#f2f0fa;--fg:#1c1830;--board:#1c1830;--accent:#6c4cf0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#110e20;--fg:#ece8fb;--board:#0a0816;--accent:#9b85ff}}
+:root[data-theme="dark"]{--bg:#110e20;--fg:#ece8fb;--board:#0a0816;--accent:#9b85ff}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px;box-sizing:border-box;overflow:hidden}
+.bar{display:flex;gap:20px;font-weight:700}
+.wrap{position:relative;height:min(84vh,640px);aspect-ratio:3/4;max-width:96vw}
+canvas{width:100%;height:100%;display:block;background:var(--board);border-radius:12px;touch-action:none}
+.msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(10,8,22,.8);color:#fff;border-radius:12px;text-align:center;padding:12px}
+button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 22px;font-size:1rem;font-weight:800;cursor:pointer}
+small{opacity:.8}
+</style>
+</head>
+<body>
+<div class="bar"><span>Score <b id="s">0</b></span><span>Lives <b id="l">3</b></span><span>Best <b id="b">0</b></span></div>
+<div class="wrap"><canvas id="c" width="480" height="640"></canvas>
+<div class="msg" id="m"><div id="mt" style="font-size:1.5rem;font-weight:800">🧱 Breakout</div><button id="go">Play</button><small>Mouse / touch / ← → to move<br>Click, tap or Space to launch</small></div></div>
+<script>
+const cv=document.getElementById('c'),x=cv.getContext('2d'),W=480,H=640,$=id=>document.getElementById(id);
+const COL=['#ef476f','#f78c6b','#ffd166','#06d6a0','#118ab2'];
+let pd,ball,br,score,lives,best=0,run=false,held=true,last=0,keys={};
+try{best=+localStorage.getItem('breakoutBest')||0}catch(e){}$('b').textContent=best;
+function start(){pd={x:W/2,w:90,h:12,y:H-40};br=[];for(let r=0;r<5;r++)for(let c=0;c<8;c++)br.push({x:19+c*56,y:60+r*26,w:50,h:20,c:COL[r],p:(5-r)*10});
+score=0;lives=3;$('s').textContent=0;$('l').textContent=3;reset();run=true;$('m').style.display='none';last=performance.now();requestAnimationFrame(loop)}
+function reset(){held=true;ball={x:pd.x,y:pd.y-10,vx:0,vy:0,r:8,sp:340}}
+function launch(){if(!held)return;held=false;const a=-Math.PI/2+(Math.random()-.5)*.6;ball.vx=Math.cos(a)*ball.sp;ball.vy=Math.sin(a)*ball.sp}
+function px(e){const r=cv.getBoundingClientRect();return(e.clientX-r.left)*W/r.width}
+cv.addEventListener('pointermove',e=>{if(run)pd.x=px(e)});
+cv.addEventListener('pointerdown',e=>{if(run){pd.x=px(e);launch()}});
+addEventListener('keydown',e=>{keys[e.key]=1;if(e.key===' '){e.preventDefault();run?launch():start()}});
+addEventListener('keyup',e=>keys[e.key]=0);
+$('go').onclick=start;
+function end(win){run=false;if(score>best){best=score;$('b').textContent=best;try{localStorage.setItem('breakoutBest',best)}catch(e){}}
+$('mt').textContent=(win?'🎉 You cleared it! ':'Game over — ')+score;$('go').textContent='Play again';$('m').style.display='flex'}
+function update(dt){
+pd.x+=((keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0))*480*dt;pd.x=Math.max(pd.w/2,Math.min(W-pd.w/2,pd.x));
+if(held){ball.x=pd.x;ball.y=pd.y-10;return}
+ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
+if(ball.x<ball.r){ball.x=ball.r;ball.vx*=-1}if(ball.x>W-ball.r){ball.x=W-ball.r;ball.vx*=-1}
+if(ball.y<ball.r){ball.y=ball.r;ball.vy*=-1}
+if(ball.vy>0&&ball.y+ball.r>=pd.y&&ball.y<pd.y+pd.h&&Math.abs(ball.x-pd.x)<pd.w/2+ball.r){
+const t=(ball.x-pd.x)/(pd.w/2),a=-Math.PI/2+t*1.0;ball.vx=Math.cos(a)*ball.sp;ball.vy=Math.sin(a)*ball.sp;ball.y=pd.y-ball.r}
+for(const b of br){if(ball.x+ball.r>b.x&&ball.x-ball.r<b.x+b.w&&ball.y+ball.r>b.y&&ball.y-ball.r<b.y+b.h){
+const ox=Math.min(ball.x+ball.r-b.x,b.x+b.w-(ball.x-ball.r)),oy=Math.min(ball.y+ball.r-b.y,b.y+b.h-(ball.y-ball.r));
+if(ox<oy)ball.vx*=-1;else ball.vy*=-1;b.dead=1;score+=b.p;$('s').textContent=score;
+ball.sp=Math.min(560,ball.sp+4);const m=Math.hypot(ball.vx,ball.vy);ball.vx*=ball.sp/m;ball.vy*=ball.sp/m;break}}
+br=br.filter(b=>!b.dead);
+if(!br.length)return end(1);
+if(ball.y>H+20){lives--;$('l').textContent=lives;if(lives<=0)return end(0);reset()}}
+function draw(){
+x.clearRect(0,0,W,H);
+br.forEach(b=>{x.fillStyle=b.c;x.beginPath();x.roundRect(b.x,b.y,b.w,b.h,4);x.fill()});
+x.fillStyle='#fff';x.beginPath();x.roundRect(pd.x-pd.w/2,pd.y,pd.w,pd.h,6);x.fill();
+x.beginPath();x.arc(ball.x,ball.y,ball.r,0,7);x.fill()}
+function loop(t){const dt=Math.min(.03,(t-last)/1000);last=t;if(!run)return;update(dt);if(run){draw();requestAnimationFrame(loop)}}
+pd={x:W/2,w:90,h:12,y:H-40};br=[];ball={x:W/2,y:H-50,r:8};draw();
+</script>
+</body>
+</html>

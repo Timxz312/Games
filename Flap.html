@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flap</title>
+<style>
+:root{--bg:#e6f4fb;--fg:#12303f;--accent:#f4a000;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1a22;--fg:#e4f2f9}}
+:root[data-theme="dark"]{--bg:#0d1a22;--fg:#e4f2f9}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px;box-sizing:border-box;overflow:hidden;user-select:none}
+.bar{font-weight:700;display:flex;gap:20px}
+.wrap{position:relative;height:min(84vh,560px);aspect-ratio:9/14;max-width:96vw}
+canvas{width:100%;height:100%;display:block;border-radius:12px;touch-action:none}
+.msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(10,30,45,.65);color:#fff;border-radius:12px;text-align:center;padding:12px;pointer-events:none}
+.msg.show{display:flex}.msg.hide{display:none}
+small{opacity:.9}
+</style>
+</head>
+<body>
+<div class="bar"><span>Score <b id="s">0</b></span><span>Best <b id="b">0</b></span></div>
+<div class="wrap"><canvas id="c" width="360" height="560"></canvas>
+<div class="msg show" id="m"><div id="mt" style="font-size:1.5rem;font-weight:800">🐤 Flap</div><small id="ms">Tap, click or press Space to flap.<br>Squeeze through the pipes!</small></div></div>
+<script>
+const cv=document.getElementById('c'),x=cv.getContext('2d'),W=360,H=560,GR=70,$=id=>document.getElementById(id);
+let bird,pipes,score,best=0,st='ready',last=0,spawn=0,gx=0;
+try{best=+localStorage.getItem('flapBest')||0}catch(e){}$('b').textContent=best;
+function reset(){bird={x:90,y:H/2-40,vy:0,r:14};pipes=[];score=0;spawn=0;$('s').textContent=0}
+function flap(){
+if(st==='ready'){st='play';$('m').className='msg hide';last=performance.now();requestAnimationFrame(loop)}
+if(st==='play')bird.vy=-400;
+else if(st==='over'&&over_t<=0){reset();st='ready';$('mt').textContent='🐤 Flap';$('ms').innerHTML='Tap to start';draw()}}
+let over_t=0;
+cv.addEventListener('pointerdown',e=>{e.preventDefault();flap()});
+addEventListener('keydown',e=>{if(e.key===' '||e.key==='ArrowUp'){e.preventDefault();flap()}});
+function die(){st='over';over_t=.6;if(score>best){best=score;$('b').textContent=best;try{localStorage.setItem('flapBest',best)}catch(e){}}
+$('mt').textContent='Game over — '+score;$('ms').innerHTML='Tap to try again';$('m').className='msg show'}
+function update(dt){
+gx=(gx+120*dt)%24;
+bird.vy+=1300*dt;bird.y+=bird.vy*dt;
+spawn-=dt;if(spawn<=0){spawn=1.55;const gap=150;pipes.push({x:W+30,w:54,gy:80+Math.random()*(H-GR-gap-160),gap,pass:0})}
+pipes.forEach(p=>p.x-=150*dt);pipes=pipes.filter(p=>p.x>-80);
+for(const p of pipes){
+if(!p.pass&&p.x+p.w<bird.x){p.pass=1;score++;$('s').textContent=score}
+if(bird.x+bird.r-3>p.x&&bird.x-bird.r+3<p.x+p.w&&(bird.y-bird.r+3<p.gy||bird.y+bird.r-3>p.gy+p.gap))return die()}
+if(bird.y+bird.r>H-GR){bird.y=H-GR-bird.r;return die()}
+if(bird.y<bird.r)bird.y=bird.r}
+function draw(){
+const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#6ec6f1');g.addColorStop(1,'#cdeefb');x.fillStyle=g;x.fillRect(0,0,W,H);
+x.fillStyle='rgba(255,255,255,.7)';[[60,90,26],[240,150,32],[150,60,20]].forEach(([a,b,r])=>{x.beginPath();x.arc(a,b,r,0,7);x.arc(a+r,b+4,r*.8,0,7);x.arc(a-r,b+6,r*.7,0,7);x.fill()});
+pipes.forEach(p=>{x.fillStyle='#4caf50';x.fillRect(p.x,0,p.w,p.gy);x.fillRect(p.x,p.gy+p.gap,p.w,H);
+x.fillStyle='#388e3c';x.fillRect(p.x-4,p.gy-22,p.w+8,22);x.fillRect(p.x-4,p.gy+p.gap,p.w+8,22)});
+x.fillStyle='#d9b26f';x.fillRect(0,H-GR,W,GR);x.fillStyle='#7cc255';x.fillRect(0,H-GR,W,10);
+x.fillStyle='#c19a55';for(let i=-1;i<16;i++)x.fillRect(i*24-gx,H-GR+10,12,8);
+x.save();x.translate(bird.x,bird.y);x.rotate(Math.max(-.5,Math.min(1.1,bird.vy/600)));
+x.fillStyle='#ffd23f';x.beginPath();x.arc(0,0,bird.r,0,7);x.fill();
+x.fillStyle='#f4a000';x.beginPath();x.moveTo(bird.r-2,-2);x.lineTo(bird.r+9,2);x.lineTo(bird.r-2,6);x.fill();
+x.fillStyle='#fff';x.beginPath();x.arc(5,-5,5,0,7);x.fill();x.fillStyle='#000';x.beginPath();x.arc(7,-5,2.4,0,7);x.fill();
+x.fillStyle='#f4a000';x.beginPath();x.ellipse(-4,3,7,4,-.3,0,7);x.fill();x.restore()}
+function loop(t){const dt=Math.min(.03,(t-last)/1000);last=t;
+if(st==='play'){update(dt);draw();requestAnimationFrame(loop)}else if(st==='over'){draw()}}
+setInterval(()=>{if(over_t>0)over_t-=.1},100);
+reset();draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Snake</title>
+<style>
+:root{--bg:#f4f1ea;--fg:#1d2a24;--board:#e4dfd2;--snake:#2f7d4f;--head:#1b5e38;--food:#d1495b;--accent:#2f7d4f;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14201a;--fg:#e8efe9;--board:#1d2e25;--snake:#58c07f;--head:#8fe3ac;--food:#ff6b7d;--accent:#58c07f}}
+:root[data-theme="dark"]{--bg:#14201a;--fg:#e8efe9;--board:#1d2e25;--snake:#58c07f;--head:#8fe3ac;--food:#ff6b7d;--accent:#58c07f}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px;min-height:100vh;box-sizing:border-box;touch-action:manipulation}
+h1{margin:0;font-size:1.6rem}
+.bar{display:flex;gap:24px;font-weight:600}
+.wrap{position:relative;width:min(92vw,420px)}
+canvas{width:100%;aspect-ratio:1;background:var(--board);border-radius:12px;display:block;touch-action:none}
+.msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:color-mix(in srgb,var(--bg) 80%,transparent);border-radius:12px;text-align:center;padding:12px}
+button{background:var(--accent);color:var(--bg);border:0;border-radius:10px;padding:10px 20px;font-size:1rem;font-weight:700;cursor:pointer}
+.pad{display:grid;grid-template-columns:repeat(3,64px);gap:8px}
+.pad button{padding:0;height:56px;font-size:1.4rem}
+.pad .u{grid-column:2}.pad .l{grid-column:1;grid-row:2}.pad .d{grid-column:2;grid-row:2}.pad .r{grid-column:3;grid-row:2}
+small{opacity:.7}
+</style>
+</head>
+<body>
+<h1>🐍 Snake</h1>
+<div class="bar"><span>Score: <b id="s">0</b></span><span>Best: <b id="b">0</b></span></div>
+<div class="wrap">
+<canvas id="c" width="420" height="420"></canvas>
+<div class="msg" id="m"><div id="mt" style="font-size:1.2rem;font-weight:700">Ready?</div><button id="go">Play</button><small>Arrow keys / WASD, swipe, or buttons</small></div>
+</div>
+<div class="pad"><button class="u" data-d="u">▲</button><button class="l" data-d="l">◀</button><button class="d" data-d="d">▼</button><button class="r" data-d="r">▶</button></div>
+<script>
+const N=20,cv=document.getElementById('c'),x=cv.getContext('2d'),T=cv.width/N;
+const $=id=>document.getElementById(id);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let snake,dir,next,food,score,best=0,timer,running=false;
+try{best=+localStorage.getItem('snakeBest')||0}catch(e){}
+$('b').textContent=best;
+const V={u:[0,-1],d:[0,1],l:[-1,0],r:[1,0]};
+function place(){do{food=[Math.random()*N|0,Math.random()*N|0]}while(snake.some(p=>p[0]==food[0]&&p[1]==food[1]))}
+function start(){snake=[[10,10],[9,10],[8,10]];dir=next=V.r;score=0;$('s').textContent=0;place();running=true;$('m').style.display='none';clearInterval(timer);timer=setInterval(tick,110);draw()}
+function turn(k){const v=V[k];if(!v)return;if(v[0]+dir[0]===0&&v[1]+dir[1]===0)return;next=v}
+function tick(){
+dir=next;const h=[snake[0][0]+dir[0],snake[0][1]+dir[1]];
+if(h[0]<0||h[1]<0||h[0]>=N||h[1]>=N||snake.some(p=>p[0]==h[0]&&p[1]==h[1]))return over();
+snake.unshift(h);
+if(h[0]==food[0]&&h[1]==food[1]){score++;$('s').textContent=score;place();
+clearInterval(timer);timer=setInterval(tick,Math.max(55,110-score*2))}else snake.pop();
+draw()}
+function over(){running=false;clearInterval(timer);
+if(score>best){best=score;$('b').textContent=best;try{localStorage.setItem('snakeBest',best)}catch(e){}}
+$('mt').textContent='Game over — score '+score;$('go').textContent='Play again';$('m').style.display='flex'}
+function draw(){
+x.clearRect(0,0,cv.width,cv.height);
+x.fillStyle=css('--food');x.beginPath();x.arc(food[0]*T+T/2,food[1]*T+T/2,T*.4,0,7);x.fill();
+snake.forEach((p,i)=>{x.fillStyle=css(i?'--snake':'--head');x.beginPath();x.roundRect(p[0]*T+1,p[1]*T+1,T-2,T-2,5);x.fill()})}
+$('go').onclick=start;
+addEventListener('keydown',e=>{
+const k={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r',w:'u',s:'d',a:'l',d:'r'}[e.key];
+if(k){e.preventDefault();turn(k)}
+else if((e.key==='Enter'||e.key===' ')&&!running){e.preventDefault();start()}});
+document.querySelectorAll('.pad button').forEach(b=>b.onclick=()=>turn(b.dataset.d));
+let t0;cv.addEventListener('touchstart',e=>{t0=e.touches[0]});
+cv.addEventListener('touchend',e=>{if(!t0)return;const t=e.changedTouches[0],dx=t.clientX-t0.clientX,dy=t.clientY-t0.clientY;
+if(Math.max(Math.abs(dx),Math.abs(dy))<20)return;
+turn(Math.abs(dx)>Math.abs(dy)?(dx>0?'r':'l'):(dy>0?'d':'u'))});
+snake=[[10,10]];food=[15,10];draw();
+</script>
+</body>
+</html>

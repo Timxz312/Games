@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pong</title>
+<style>
+:root{--bg:#eef2f7;--fg:#101828;--court:#101828;--accent:#2e90fa;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0f17;--fg:#e8edf6;--court:#05070c}}
+:root[data-theme="dark"]{--bg:#0b0f17;--fg:#e8edf6;--court:#05070c}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:8px;box-sizing:border-box;overflow:hidden}
+.wrap{position:relative;width:min(96vw,700px)}
+canvas{width:100%;display:block;aspect-ratio:8/5;background:var(--court);border-radius:12px;touch-action:none;cursor:none}
+.msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(5,7,12,.8);color:#fff;border-radius:12px;text-align:center;padding:12px}
+button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 22px;font-size:1rem;font-weight:800;cursor:pointer}
+small{opacity:.8}
+</style>
+</head>
+<body>
+<div class="wrap"><canvas id="c" width="640" height="400"></canvas>
+<div class="msg" id="m"><div id="mt" style="font-size:1.5rem;font-weight:800">🏓 Pong</div><button id="go">Play</button><small>First to 7 wins<br>Mouse / touch / W S / ↑ ↓ to move your paddle</small></div></div>
+<script>
+const cv=document.getElementById('c'),x=cv.getContext('2d'),W=640,H=400,$=id=>document.getElementById(id);
+const PH=70,PW=10;
+let me,cpu,ball,ps,cs,run=false,last=0,keys={},serve=0;
+function start(){me=H/2;cpu=H/2;ps=cs=0;newBall(1);run=true;$('m').style.display='none';last=performance.now();requestAnimationFrame(loop)}
+function newBall(d){ball={x:W/2,y:H/2,vx:0,vy:0,r:7,sp:320};serve=.8;ball.d=d}
+function py(e){const r=cv.getBoundingClientRect();return(e.clientY-r.top)*H/r.height}
+cv.addEventListener('pointermove',e=>{if(run)me=py(e)});
+cv.addEventListener('pointerdown',e=>{if(run)me=py(e)});
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;if(e.key.startsWith('Arrow'))e.preventDefault()});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
+$('go').onclick=start;
+function update(dt){
+me+=((keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0))*420*dt;me=Math.max(PH/2,Math.min(H-PH/2,me));
+const tgt=ball.vx>0?ball.y:H/2,dy=tgt-cpu;cpu+=Math.sign(dy)*Math.min(Math.abs(dy),(250+ps*12)*dt);cpu=Math.max(PH/2,Math.min(H-PH/2,cpu));
+if(serve>0){serve-=dt;if(serve<=0){const a=(Math.random()-.5)*.8;ball.vx=Math.cos(a)*ball.sp*ball.d;ball.vy=Math.sin(a)*ball.sp}return}
+ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
+if(ball.y<ball.r||ball.y>H-ball.r){ball.vy*=-1;ball.y=Math.max(ball.r,Math.min(H-ball.r,ball.y))}
+if(ball.x-ball.r<24+PW&&ball.x>10&&ball.vx<0){if(Math.abs(ball.y-me)<PH/2+ball.r){const t=(ball.y-me)/(PH/2),a=t*1.0;ball.sp=Math.min(620,ball.sp+18);ball.vx=Math.cos(a)*ball.sp;ball.vy=Math.sin(a)*ball.sp;ball.x=24+PW+ball.r}}
+if(ball.x+ball.r>W-24-PW&&ball.x<W-10&&ball.vx>0){if(Math.abs(ball.y-cpu)<PH/2+ball.r){const t=(ball.y-cpu)/(PH/2),a=t*1.0;ball.sp=Math.min(620,ball.sp+18);ball.vx=-Math.cos(a)*ball.sp;ball.vy=Math.sin(a)*ball.sp;ball.x=W-24-PW-ball.r}}
+if(ball.x<-20){cs++;check(1)}else if(ball.x>W+20){ps++;check(-1)}}
+function check(d){if(ps>=7||cs>=7){run=false;$('mt').textContent=ps>=7?'🎉 You win! '+ps+'–'+cs:'CPU wins '+cs+'–'+ps;$('go').textContent='Play again';$('m').style.display='flex'}else newBall(d)}
+function draw(){
+x.clearRect(0,0,W,H);
+x.fillStyle='#ffffff30';for(let y=8;y<H;y+=24)x.fillRect(W/2-2,y,4,12);
+x.fillStyle='#fff';x.font='bold 48px system-ui';x.textAlign='center';x.globalAlpha=.5;x.fillText(ps,W/2-60,60);x.fillText(cs,W/2+60,60);x.globalAlpha=1;
+x.fillStyle='#2e90fa';x.beginPath();x.roundRect(24,me-PH/2,PW,PH,4);x.fill();
+x.fillStyle='#f97066';x.beginPath();x.roundRect(W-24-PW,cpu-PH/2,PW,PH,4);x.fill();
+x.fillStyle='#fff';x.beginPath();x.arc(ball.x,ball.y,ball.r,0,7);x.fill()}
+function loop(t){const dt=Math.min(.03,(t-last)/1000);last=t;if(!run)return;update(dt);draw();if(run)requestAnimationFrame(loop)}
+me=cpu=H/2;ps=cs=0;ball={x:W/2,y:H/2,r:7};draw();
+</script>
+</body>
+</html>
