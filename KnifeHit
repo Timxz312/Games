@@ -1,0 +1,52 @@
+ <!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+   <script src="/sdk.js"></script><script src="https://app-170133.games.s3.yandex.net/sdk/_/v2.5871b227ff69bc337568.js"></script>   
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    iframe {
+        width: 100vw;
+        height: 100vh;
+        border: none;
+        margin:0;
+        padding:0;
+        overflow:hidden;
+    }
+</style></head>
+
+<body>
+    <script>var ysdk;YaGames.init({adv: {onAdvClose: wasShown => {console.info('adv closed!');}}}).then(y => {setTimeout(function() {y.adv.showFullscreenAdv({callbacks: {}})}, 1000);ysdk = y;setInterval(function() {ysdk.adv.showFullscreenAdv({callbacks: {}})}, 180000);});</script>
+
+<script>
+    const draftRu = 'https://kniferu.website.yandexcloud.net/';
+    const draftEn = 'https://knifeen.website.yandexcloud.net/';
+
+   let domain;
+   const rows = decodeURIComponent(location.hash).toString().split("&");
+for (let i = 0; i < rows.length; i++) {
+    const origins = rows[i].match(/(origin=)([A-Za-z\.://]+)/);
+    if (!!origins && origins[1] === 'origin=') {
+          domain = origins[2].split('.')[1] ;
+          break;
+     }
+}
+    const switchDomain = { ru: draftRu, com: draftEn };
+    const frame = document.createElement('iframe');
+
+    frame.src = switchDomain[domain] || draftEn;
+    document.body.append(frame);
+</script><iframe src="https://knifeen.website.yandexcloud.net/"></iframe>
+
+<style id="yandex-games-no-ads-style">
+body div[id*="yandex_rtb"],
+body div[id*="adfox"],
+body iframe#bwiframe,
+body iframe[src*="yabnrwall.html"],
+body iframe[src*="yartbbnr.html"],
+body yatag,
+body yatag[class]
+{ display: none !important; }</style></body></html> 
