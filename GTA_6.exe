@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GTA6.exe</title>
+<style>
+  :root { color-scheme: dark; --gold:#f4c75b; --red:#ff3131; --green:#62ff83; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; width:100%; min-height:100%; background:#050505; color:#f5f5f5; font-family:Arial,Helvetica,sans-serif; }
+  body { overflow:hidden; }
+  button { font:inherit; cursor:pointer; }
+  .screen { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; background:#050505; }
+  .hidden { display:none !important; }
+
+  #intro {
+    flex-direction:column; gap:20px; text-align:center;
+    background:radial-gradient(ellipse at 50% 65%,rgba(131,25,18,.3),transparent 55%),
+    linear-gradient(150deg,#111 0%,#030303 70%);
+  }
+  .logo { font-weight:1000; letter-spacing:.06em; font-size:clamp(46px,10vw,100px); color:#fff; text-shadow:0 3px 0 #7e1919,0 0 35px #8f1c16; }
+  .logo span { color:var(--gold); }
+  .sub { letter-spacing:.28em; color:#c7c7c7; font-size:clamp(10px,2vw,15px); }
+  .load-wrap { width:min(460px,85vw); margin-top:22px; }
+  .load-label { display:flex; justify-content:space-between; font-size:12px; color:#ddd; margin-bottom:9px; letter-spacing:.12em; }
+  .track { height:7px; background:#292929; overflow:hidden; border-radius:1px; }
+  #bar { height:100%; width:0%; background:linear-gradient(90deg,#b51d18,#f4c75b); transition:width .15s linear; }
+  .hint { color:#858585; font-size:12px; max-width:500px; line-height:1.5; }
+  .controls { position:fixed; z-index:20; top:14px; right:14px; display:flex; gap:8px; }
+  .control { background:#171717; color:#eee; border:1px solid #555; border-radius:7px; padding:9px 12px; font-size:12px; }
+  .control:hover { background:#2b2b2b; }
+
+  #flashes { background:#050505; text-align:center; }
+  #flashText {
+    font-size:clamp(42px,10vw,110px);
+    font-weight:1000;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    text-shadow:0 0 8px currentColor,0 0 20px currentColor,0 0 40px currentColor;
+    animation:neonPulse .7s ease-in-out infinite alternate;
+  }
+  @keyframes neonPulse {
+    from { filter:brightness(1); }
+    to { filter:brightness(1.7); }
+  }
+
+  #success { flex-direction:column; gap:18px; background:#000; text-align:center; }
+  #successText { color:var(--green); font:700 clamp(20px,4.3vw,46px)/1.35 monospace; text-shadow:0 0 18px rgba(98,255,131,.55); }
+  #blackout,#popupScreen { background:#000; }
+
+  .dialog { width:min(540px,92vw); background:#e9e9e9; color:#151515; border:2px solid #fff; box-shadow:0 0 0 1px #555,0 18px 70px #000; }
+  .dialog-title { display:flex; justify-content:space-between; align-items:center; padding:10px 13px; background:#242424; color:#fff; font-weight:bold; font-size:14px; }
+  .fake-x { border:0; background:#c92b2b; color:#fff; font-weight:bold; width:26px; height:24px; border-radius:3px; }
+  .dialog-body { padding:25px 22px 12px; display:flex; gap:17px; align-items:flex-start; }
+  .warning { flex:0 0 44px; width:44px; height:44px; border-radius:50%; display:grid; place-items:center; background:#d12b2b; color:#fff; font-size:27px; font-weight:bold; }
+  .dialog-body p { margin:0; line-height:1.5; }
+  .dialog-body small { display:block; margin-top:12px; color:#555; }
+  .dialog-actions { display:flex; justify-content:center; gap:12px; padding:17px 20px 22px; }
+  .yes { min-width:100px; padding:10px 22px; background:#f3f3f3; color:#111; border:1px solid #777; border-radius:3px; box-shadow:inset 0 1px #fff; }
+  .yes:hover { background:#ddd; }
+
+  /* Center the result heading, paragraphs, and button */
+  #result {
+    text-align:center;
+    width:100%;
+    max-width:650px;
+    margin:0 auto;
+    flex-direction:column;
+  }
+  #result > div { width:100%; text-align:center; }
+  #result h1 {
+    color:var(--green);
+    font-size:clamp(30px,6vw,58px);
+    text-align:center;
+    margin-left:auto;
+    margin-right:auto;
+  }
+  #result p { color:#ccc; line-height:1.6; text-align:center; }
+  .again { margin-top:12px; background:var(--green); color:#041006; border:0; border-radius:7px; padding:12px 18px; font-weight:bold; }
+  .shake { animation:shake .22s linear 2; }
+  @keyframes shake {
+    0%,100% { transform:translateX(0); }
+    25% { transform:translateX(-7px); }
+    75% { transform:translateX(7px); }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    *,*::before,*::after {
+      animation-duration:.01ms !important;
+      transition-duration:.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="controls">
+  <button class="control" id="fullscreenBtn" type="button">Enter fullscreen</button>
+ 
+</div>
+
+<section class="screen" id="intro" aria-label="Fake game loading screen">
+  <div class="logo">GTA<span>6</span>.exe</div>
+  <div class="sub">100% REAL GTA 6</div>
+  <div class="load-wrap">
+    <div class="load-label"><span id="loadStatus">INITIALIZING</span><span id="percent">0%</span></div>
+    <div class="track"><div id="bar"></div></div>
+  </div>
+  <div class="hint">Loading game files… Please wait.</div>
+</section>
+
+<section class="screen hidden" id="flashes" aria-live="polite">
+  <div id="flashText"></div>
+</section>
+
+<section class="screen hidden" id="success">
+  <div id="successText">Succesfully loaded; GTA6.exe.V1rus!</div>
+  <div class="sub">INITIALIZATION COMPLETE</div>
+</section>
+
+<section class="screen hidden" id="blackout" aria-label="Black screen"></section>
+
+<section class="screen hidden" id="popupScreen">
+  <div class="dialog" id="dialog" role="dialog" aria-labelledby="dialogTitle" aria-describedby="dialogMessage">
+    <div class="dialog-title">
+      <span id="dialogTitle">GTA6.exe — Critical System Alert</span>
+      <button class="fake-x" id="fakeX" type="button" aria-label="Close fake alert">×</button>
+    </div>
+    <div class="dialog-body">
+      <div class="warning">!</div>
+      <div>
+        <p id="dialogMessage"><strong>WARNING:</strong> Delete all files on this device?</p>
+        <small>Warning... if you click yes all files will be deleted including personal data report to google if you think this is Malware</small>
+      </div>
+    </div>
+    <div class="dialog-actions">
+      <button class="yes" type="button">Yes</button>
+      <button class="yes" type="button">Yes</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen hidden" id="result">
+  <div>
+    <h1>your really dumb lol</h1>
+    <p>lol ur so dumb u really thought i coded gta 6 loser</p>
+    <p>your stuck here forever LOL XD</p>
+    <button class="again" id="restartBtn" type="button">!RUIN CHROMEBOOK/PC!</button>
+  </div>
+</section>
+
+<script>
+(() => {
+  const ids = ['intro','flashes','success','blackout','popupScreen','result'];
+  const screens = Object.fromEntries(ids.map(id => [id,document.getElementById(id)]));
+  const bar = document.getElementById('bar');
+  const percent = document.getElementById('percent');
+  const loadStatus = document.getElementById('loadStatus');
+  const flashText = document.getElementById('flashText');
+
+  let timers = [];
+  let stopped = false;
+  let audioContext = null;
+
+  // Plays a short notification-style beep without external files.
+  function playPopupSound() {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      audioContext = audioContext || new AudioContextClass();
+
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const now = audioContext.currentTime;
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880,now);
+      oscillator.frequency.setValueAtTime(660,now + 0.09);
+
+      gain.gain.setValueAtTime(0.0001,now);
+      gain.gain.exponentialRampToValueAtTime(0.22,now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001,now + 0.22);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.23);
+    } catch (error) {
+      console.log('Popup sound could not play:',error);
+    }
+  }
+
+  function later(fn,ms) {
+    const id = setTimeout(() => { if (!stopped) fn(); },ms);
+    timers.push(id);
+    return id;
+  }
+
+  function show(id) {
+    ids.forEach(key => screens[key].classList.toggle('hidden',key !== id));
+    if (id === 'popupScreen') playPopupSound();
+  }
+
+  function clearTimers() {
+    timers.forEach(id => {
+      clearTimeout(id);
+      clearInterval(id);
+    });
+    timers = [];
+  }
+
+  function stopPrank() {
+    stopped = true;
+    clearTimers();
+    document.body.classList.remove('shake');
+    show('result');
+  }
+
+  function startPrank() {
+    stopped = false;
+    clearTimers();
+    bar.style.width = '0%';
+    percent.textContent = '0%';
+    loadStatus.textContent = 'INITIALIZING';
+    show('intro');
+
+    let p = 0;
+    const load = setInterval(() => {
+      if (stopped) { clearInterval(load); return; }
+      p += Math.floor(Math.random() * 4) + 1;
+
+      if (p >= 100) {
+        p = 100;
+        clearInterval(load);
+        bar.style.width = '100%';
+        percent.textContent = '100%';
+        loadStatus.textContent = 'COMPLETE';
+        later(runFlashes,650);
+      } else {
+        bar.style.width = p + '%';
+        percent.textContent = p + '%';
+        loadStatus.textContent = p < 35 ? 'INITIALIZING' : p < 72 ? 'LOADING ASSETS' : 'VERIFYING FILES';
+      }
+    },150);
+
+    timers.push(load);
+  }
+
+  function runFlashes() {
+    show('flashes');
+    const messages = [
+      { text:'your a idiot!',color:'#ff3131' },
+      { text:'H@aKkED!!!',color:'#62ff83' },
+      { text:'LOS3R',color:'#f4c75b' }
+    ];
+
+    let count = 0;
+    function flashNext() {
+      if (stopped) return;
+      const item = messages[count % messages.length];
+      flashText.textContent = item.text;
+      flashText.style.color = item.color;
+      screens.flashes.style.background = count % 2 ? '#090909' : '#1a0000';
+      count++;
+
+      if (count < 24) {
+        later(flashNext,150);
+      } else {
+        later(() => {
+          show('success');
+          later(() => {
+            show('blackout');
+            later(() => show('popupScreen'),1250);
+          },2300);
+        },450);
+      }
+    }
+    flashNext();
+  }
+
+  document.getElementById('fullscreenBtn').addEventListener('click',async () => {
+    try {
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+      else await document.exitFullscreen();
+    } catch (_) {
+      alert("Faild to load Full Screen");
+    }
+  });
+
+  document.addEventListener('fullscreenchange',() => {
+    document.getElementById('fullscreenBtn').textContent =
+      document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen';
+  });
+
+  document.getElementById('fakeX').addEventListener('click',() => {
+    const dialog = document.getElementById('dialog');
+    dialog.classList.remove('shake');
+    void dialog.offsetWidth;
+    dialog.classList.add('shake');
+    document.getElementById('dialogMessage').innerHTML =
+      '<strong>ERROR:</strong> you really think i was dumb enough to not code that you cant close this, huh?';
+  });
+
+  document.querySelectorAll('.yes').forEach(btn => btn.addEventListener('click',stopPrank));
+  document.getElementById('restartBtn').addEventListener('click',startPrank);
+
+  startPrank();
+})();
+</script>
+</body>
+</html>
